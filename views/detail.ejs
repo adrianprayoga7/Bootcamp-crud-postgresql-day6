@@ -1,0 +1,30 @@
+<!-- <% if (contact) { %>
+<div class="card-body">
+    <h5 class="card-title">
+        <%= contact.nama %>
+    </h5>
+    <p class="card-text">
+        <%= contact.tlp %>
+    </p>
+    <p class="card-text">
+        <%= contact.email %>
+    </p>
+    <% } else { %>
+        <p>Data tidak ditemukan</p>
+    <% } %>    
+</div> -->
+
+<% if (contact) { %>
+<div class="card border-dark mb-3" style="width: 18rem; margin-left: 550px; text-align: center; margin-top: 50px;">
+    <div class="card-header bg-secondary" style="font-weight: bold;">Detail Contact</div>
+    <div class="card-body">
+        <h5 class="card-title"><%= contact.nama %></h5>
+        <h6 class="card-subtitle mb-2 text-muted" style="margin-top: 10px;"><%= contact.tlp %></h6>
+        <p class="card-text"><%= contact.email %></p>
+    </div>
+  </div>
+  <% } else { %>
+        <h1>Data Tidak Ditemukan!</h1>
+    <% } %>
+
+<a class="btn btn-success" href="/contact" role="button" style="margin-top: 1px; margin-left: 550px;">Kembali</a>

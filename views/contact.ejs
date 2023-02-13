@@ -1,22 +1,35 @@
 
-    <h1>Ini Halaman Contact!</h1>
-
-    <table border="1" style="margin-left: 50px;">
+    <h1 style="text-align: center; margin-top: 50px;">Ini Halaman Contact!</h1>
+    <table class="table table-light mt-4" style="width: 50rem; margin-left: 350px;">
+        <% if (msg.length !== 0) { %>
+            <div class="alert alert-success" role="alert" style="width: 50rem; margin-left: 350px;">
+                <%= msg %>
+            </div>
+        <% } %>
         <tr>
-                <th>Nama</th>
-                <th>No Telp</th>
+                <th scope="col">No</th>
+                <th scope="col">Nama</th>
+                <th scope="col">No Telp</th>
+                <th scope="col" style="text-align: center;">Action</th>
         </tr>
 
-        <% if (febChar.length) { %>
-        <% febChar.forEach( function( eachContact) { %>
+        <% if (contact.length) { %>
+        <% contact.forEach( function( contacts, i) { %>
         <tr>
-                <td><%= eachContact.nama %></td>
-                <td><%= eachContact.tlp %></td>
+                <td><%= i+1 %></td>
+                <td><%= contacts.nama %></td>
+                <td><%= contacts.tlp %></td>
+                <td style="text-align: center;">
+                    <a class="btn btn-dark badge" href="/contact/<%= contacts.nama %>" role="button">Detail</a>
+                    <a class="btn btn-danger badge" href="/contact/delete/<%= contacts.nama %>" role="button" onclick="return confirm('Apakah yakin ingin dihapus?')">Delete</a>
+                    <a class="btn btn-warning badge" href="/contact/edit/<%= contacts.nama %>" role="button">Edit</a>
+                </td>
         </tr>
         <% }) %>
         <% } else { %>
             <tr>
-                <td colspan="2">Data tidak ditemukan</td>
+                <td colspan="4" style="text-align: center;">Data tidak ditemukan</td>
             </tr>
         <% } %>
     </table>
+    <a class="btn btn-primary btn-lg" href="/contact/add" role="button" style="margin-left: 350px;">Add Data</a>

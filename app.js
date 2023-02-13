@@ -1,76 +1,52 @@
-// const fs = require('fs');
-// const http = require('http');
-
-// const halamanHTML = (path, res) => {
-//     fs.readFile(path, (err,data) => {
-//         if (err) {
-//             res.writeHead(404);
-//             res.write('Error : page not found');
-//         } else {
-//             res.write(data);
-//         }
-//         res.end();
-//     })
-// }
-
-// http.createServer((req,res) => {
-//     const url = req.url;
-//     console.log(url);
-//     //200 adalah status code
-//     res.writeHead(200, {
-//         'Content-Type' : 'text/html',
-//     });
-
-//     if(url==='/about') {
-//         halamanHTML('./about.html',res);    
-//     } else if (url === '/contact') {
-//         halamanHTML('./contact.html',res);
-//     } else {
-//         halamanHTML('./index.html',res);
-//     }
-// })
-//     //3000 selalu dibarengi dengan url
-//     .listen(3000,() => {
-//         console.log('Server is listening on port 3000');
-//     });
-
 const express = require('express')
 const expressLayouts = require('express-ejs-layouts');
 const morgan = require('morgan');
-const app = express()
-const port = 3000
-const contacts = require('./contact');
+const app = express();
+const port = 3000;
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const flash = require('connect-flash');
+// const validator = require('validator');
+const cookieParser = require('cookie-parser');
+const {body, validationResult, check} = require('express-validator');
+const {loadContact, detailContact, addContact, deleteContact, editContact, listContact, duplicate} = require('./utils/contact');
 
 //untuk menginformasikan dengan menggunakan view engine ejs
 app.set('view engine', 'ejs')
+
 //untuk memanggil library expresslayout
 app.use(expressLayouts);
-//untuk memunculkan foto 
-app.use(express.static('img'));
-app.use(morgan('dev'));
 
+//untuk memunculkan foto
+//built in middlewawre
+app.use(express.static('img'));
+
+
+//third party middleware
+app.use(morgan('dev'));
+app.use(cookieParser('secret'));
+app.use(flash());
+
+app.use(session({ 
+    cookie : {maxAge: 6000},
+    secret : 'anything',
+    resave : true,
+    saveUninitialized : true,
+}));
+
+//untuk parsing ke json
+app.use(bodyParser.urlencoded({ extended: false}));
+app.use(bodyParser.json());
+
+//middleware
 app.use((req, res, next) => {
     console.log('Time:', Date.now())
     next()
   })
 
-//data array untuk di pass ke ejs
-// const contacts = [
-//     {
-//         nama : 'adrian',
-//         tlp : '082128409933'
-//     },
-//     {
-//         nama : 'prayoga',
-//         tlp : '082128442233'
-//     }
-// ]
-app.get('/', (req,res) => {
-    res.sendFile(path.normalize(__dirname + '/contacts.json'))
-})
 
+//akses tampilan index
 app.get('/', (req, res) => {
-//dirname untuk memberitahu bahwa lokasi file ada di directory
     res.render('index', {
         title : 'Home Page'
     })
@@ -83,20 +59,109 @@ app.get('/about', (req,res) => {
     })
 })
 
-//akses untuk ke halaman contact
+//akses halaman contact
 app.get('/contact', (req,res) => {
-    const listContact = contacts.listContact();
+    const contact = loadContact();
     res.render('contact', {
-        title : 'Contact Page',
-        febChar : listContact
-    });
+        title : 'Halaman Contact', 
+        contact,
+        msg: req.flash('msg')
+    })
 })
 
-// //untuk akses berdasarkan id
-// app.get('/product/:id', (req,res) => {
-//     res.send(req.params);
-// })
+//untuk tambah data contact
+app.get('/contact/add', (req,res) => {
+    res.render('add-contact', {
+        title : 'Tambah Contact'
+    })
+})
 
+//untuk post data yang ditambahkan ke json
+app.post('/contact',
+[
+    body('nama').custom((value) => {
+        const duplicateCheck = duplicate(value);
+        if(duplicateCheck) {
+            throw new Error('Nama sudah ada');
+        } 
+        return true;
+    }),
+    check('tlp', 'Format No Telepon Tidak Sesuai').isMobilePhone('id-ID'),
+    check('email', 'Format Email Tidak Sesuai').isEmail(),
+],
+(req,res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        res.render('add-contact', {
+            title : 'Halaman Tambah Data',
+            errors : errors.array()
+        })
+    } else {
+    addContact(req.body);
+    req.flash('msg', 'Data Berhasil di Tambahkan!');
+    res.redirect('/contact');
+        }
+    }
+)
+
+//untuk cek detail contact
+app.get('/contact/:nama', (req,res) => {
+    const contact = detailContact(req.params.nama);
+    res.render('detail', {
+        title : 'Detail',
+        contact
+    })
+})
+
+//untuk delete contact
+app.get('/contact/delete/:nama', (req,res) => {
+    const contact = detailContact(req.params.nama);
+    if (!contact) {
+        res.status(404);
+        res.send('PAGE NOT FOUND : 404');
+    } else {
+        deleteContact(req.params.nama);
+        req.flash('msg', 'Data Berhasil Dihapus!');
+        res.redirect('/contact');
+    }
+})
+
+//untuk edit contact
+app.get('/contact/edit/:nama', (req,res) => {
+    const contact = detailContact(req.params.nama);
+    res.render('edit-contact', {
+        title : 'Edit',
+        contact
+    })
+})
+
+//proses edit contact
+app.post('/contact/edit', 
+    [
+        body('nama').custom((value) => {
+            const duplicateCheck = duplicate(value);
+            if(duplicateCheck) {
+            throw new Error('Nama sudah ada');
+        } 
+        return true;
+        }),
+        check('tlp', 'Format No Telepon Tidak Sesuai').isMobilePhone('id-ID'),
+        check('email', 'Format Email Tidak Sesuai').isEmail(),
+    ],
+    (req,res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        res.render('edit-contact', {
+            title : 'Halaman Edit Data',
+            errors : errors.array(),
+            contact : req.body
+        })
+    } else {
+        editContact(req.body);
+        req.flash('msg', 'Data Berhasil Diubah!');
+        res.redirect('/contact');
+    }
+})
 
 //untuk akses tampilan 404 atau root
 app.use('/',(req,res) => {

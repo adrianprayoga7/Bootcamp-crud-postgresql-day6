@@ -1,0 +1,28 @@
+<h3 style="text-align: center; margin-top: 20px;">Halaman Tambah Contact</h3>
+<% if (typeof errors !='undefined') { %>
+    <div class="alert alert-danger" role="alert" style="width: 50rem; margin-left: 350px;">
+        <ul>
+            <% errors.forEach(error => { %>
+                <li>
+                    <%= error.msg %>
+                </li>
+            <% }) %>
+        </ul>
+    </div>
+<% } %>
+<form method="post" action="/contact" style="width: 35rem; margin-left: 450px; margin-top: 50px;">
+<div class="mb3">
+    <label for="nama" class="form-label" style="font-weight: bold;">Nama *</label>
+    <input type="text" class="form-control" id="nama" name="nama" placeholder="Masukkan Nama" required>
+</div>
+<div class="mb3" style="margin-top: 20px;">
+    <label for="tlp" class="form-label" style="font-weight: bold;">No Telepon *</label>
+    <input type="text" class="form-control" id="tlp" name="tlp" placeholder="Masukkan No Telepon" required>
+</div>
+<div class="mb3" style="margin-top: 20px;">
+    <label for="email" class="form-label" style="font-weight: bold;">Email *</label>
+    <input type="text" class="form-control" id="email" name="email" placeholder="Masukkan Email" required>
+</div>
+<button type="submit" class="btn btn-primary" style="margin-top: 20px; margin-left: 1px;">Add Contact</button>
+<a class="btn btn-success" href="/contact" role="button" style="margin-top: 20px;">Kembali</a>
+</form>
