@@ -1,5 +1,5 @@
 const fs = require('fs');
-const validator = require('validator');
+// const validator = require('validator');
 
 //membuat dan mengecek folder bernama data
 const dirPath = './data';
@@ -43,7 +43,6 @@ const saveContact = (contacts) => {
 //untuk menambah data baru
 const addContact = (contact) => {
   const contacts = loadContact();
-  contacts.push(contact);
   saveContact(contacts);
 }
 

@@ -1,4 +1,5 @@
 const express = require('express')
+const pool = require('./db');
 const expressLayouts = require('express-ejs-layouts');
 const morgan = require('morgan');
 const app = express();
@@ -10,6 +11,9 @@ const flash = require('connect-flash');
 const cookieParser = require('cookie-parser');
 const {body, validationResult, check} = require('express-validator');
 const {loadContact, detailContact, addContact, deleteContact, editContact, listContact, duplicate} = require('./utils/contact');
+
+//fungsi untuk mengkonversi menjadi json
+app.use(express.json());
 
 //untuk menginformasikan dengan menggunakan view engine ejs
 app.set('view engine', 'ejs')
@@ -44,6 +48,17 @@ app.use((req, res, next) => {
     next()
   })
 
+// app.get("/addasync", async(req,res) => {
+//     try {
+//         const name = "prayoga"
+//         const tlp = "082128409933"
+//         const email = "prayoga@gmail.com"
+//         const newCont = await pool.query(`INSERT INTO contacts values ('${name}', '${tlp}','${email}') RETURNING *`)
+//         res.json(newCont)
+//     } catch (err) {
+//         console.error(err.message)
+//     }
+// })
 
 //akses tampilan index
 app.get('/', (req, res) => {
@@ -60,8 +75,9 @@ app.get('/about', (req,res) => {
 })
 
 //akses halaman contact
-app.get('/contact', (req,res) => {
-    const contact = loadContact();
+app.get('/contact', async(req,res) => {
+    const db = await pool.query(`SELECT * FROM contacts`);
+    const contact = db.rows;
     res.render('contact', {
         title : 'Halaman Contact', 
         contact,
@@ -79,8 +95,9 @@ app.get('/contact/add', (req,res) => {
 //untuk post data yang ditambahkan ke json
 app.post('/contact',
 [
-    body('nama').custom((value) => {
-        const duplicateCheck = duplicate(value);
+    body('nama').custom(async(value) => {
+        const db = await pool.query(`SELECT * FROM contacts WHERE lower(nama) = lower('${value}')`);
+        const duplicateCheck = db.rows[0];
         if(duplicateCheck) {
             throw new Error('Nama sudah ada');
         } 
@@ -89,15 +106,16 @@ app.post('/contact',
     check('tlp', 'Format No Telepon Tidak Sesuai').isMobilePhone('id-ID'),
     check('email', 'Format Email Tidak Sesuai').isEmail(),
 ],
-(req,res) => {
+async (req,res) => {
     const errors = validationResult(req);
+    const {nama,tlp,email} = req.body;
     if (!errors.isEmpty()) {
         res.render('add-contact', {
             title : 'Halaman Tambah Data',
             errors : errors.array()
         })
     } else {
-    addContact(req.body);
+    await pool.query(`INSERT INTO contacts (nama,tlp,email) VALUES (lower('${nama}'),lower('${tlp}'),lower('${email}'))`);
     req.flash('msg', 'Data Berhasil di Tambahkan!');
     res.redirect('/contact');
         }
@@ -105,8 +123,10 @@ app.post('/contact',
 )
 
 //untuk cek detail contact
-app.get('/contact/:nama', (req,res) => {
-    const contact = detailContact(req.params.nama);
+app.get('/contact/:nama', async(req,res) => {
+    const db = await pool.query(`SELECT * FROM contacts WHERE contacts.nama = '${req.params.nama}'`);
+    const contact = db.rows[0];
+    // const contact = detailContact(req.params.nama);
     res.render('detail', {
         title : 'Detail',
         contact
@@ -114,21 +134,24 @@ app.get('/contact/:nama', (req,res) => {
 })
 
 //untuk delete contact
-app.get('/contact/delete/:nama', (req,res) => {
-    const contact = detailContact(req.params.nama);
+app.get('/contact/delete/:nama', async(req,res) => {
+    const {nama} = req.params;
+    const contact = await pool.query(`DELETE FROM contacts WHERE nama = $1`, [nama]);
+    // const contact = detailContact(req.params.nama);
     if (!contact) {
         res.status(404);
         res.send('PAGE NOT FOUND : 404');
     } else {
-        deleteContact(req.params.nama);
+        // deleteContact(req.params.nama);
         req.flash('msg', 'Data Berhasil Dihapus!');
         res.redirect('/contact');
     }
 })
 
 //untuk edit contact
-app.get('/contact/edit/:nama', (req,res) => {
-    const contact = detailContact(req.params.nama);
+app.get('/contact/edit/:nama', async(req,res) => {
+    const db = await pool.query(`SELECT * FROM contacts WHERE lower(nama) = lower('${req.params.nama}')`);
+    const contact = db.rows[0];
     res.render('edit-contact', {
         title : 'Edit',
         contact
@@ -138,8 +161,9 @@ app.get('/contact/edit/:nama', (req,res) => {
 //proses edit contact
 app.post('/contact/edit', 
     [
-        body('nama').custom((value) => {
-            const duplicateCheck = duplicate(value);
+        body('nama').custom(async(value) => {
+            const db = await pool.query(`SELECT * FROM contacts WHERE lower(nama) = lower('${value}')`);
+            const duplicateCheck = db.rows[0];
             if(duplicateCheck) {
             throw new Error('Nama sudah ada');
         } 
@@ -148,7 +172,9 @@ app.post('/contact/edit',
         check('tlp', 'Format No Telepon Tidak Sesuai').isMobilePhone('id-ID'),
         check('email', 'Format Email Tidak Sesuai').isEmail(),
     ],
-    (req,res) => {
+    async (req,res) => {
+    const {namaLama,nama,tlp,email} = req.body;
+    // const contact = db.rows[0];
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         res.render('edit-contact', {
@@ -157,7 +183,7 @@ app.post('/contact/edit',
             contact : req.body
         })
     } else {
-        editContact(req.body);
+        await pool.query(`UPDATE contacts SET nama = '${nama}', tlp = '${tlp}', email = '${email}' WHERE lower(nama) = lower('${namaLama}')`);
         req.flash('msg', 'Data Berhasil Diubah!');
         res.redirect('/contact');
     }
